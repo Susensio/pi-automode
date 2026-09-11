@@ -168,10 +168,40 @@ Valid decision/tier combinations:
 - block: hard_deny, soft_deny, or none
 If an allow exception or explicit user intent overrides a soft-deny rule, return allow with tier allow or explicit_intent, never soft_deny.`;
 
-export const PI_GLOBAL_SETTINGS = [
-  resolve(HOME, ".pi/agent/extensions/pi-automode/config.json"),
-];
-export const PI_LEGACY_GLOBAL_SETTINGS = resolve(HOME, ".pi/agent/automode.json");
+/** Pi environment variable that overrides the agent config directory (default: `~/.pi/agent`). */
+export const PI_CODING_AGENT_DIR_ENV = "PI_CODING_AGENT_DIR";
+
+/**
+ * Resolve the effective Pi agent config directory.
+ *
+ * Honors `PI_CODING_AGENT_DIR` (default `~/.pi/agent`), expanding a leading
+ * `~` to the home directory the same way Pi itself does. Keeping this in one
+ * place prevents config reads, writes, migration, logs, and protected-path
+ * checks from diverging from the directory Pi actually uses.
+ */
+export function resolvePiAgentDir(env: NodeJS.ProcessEnv = process.env): string {
+  const value = env[PI_CODING_AGENT_DIR_ENV];
+  if (!value) return resolve(HOME, ".pi/agent");
+  if (value === "~") return HOME;
+  if (
+    value.startsWith("~/") ||
+    (process.platform === "win32" && value.startsWith("~\\"))
+  ) {
+    return resolve(HOME, value.slice(2));
+  }
+  return resolve(value);
+}
+
+/** Extension-owned global config paths inside the effective agent directory. */
+export function piGlobalSettingsPaths(): string[] {
+  return [resolve(resolvePiAgentDir(), "extensions/pi-automode/config.json")];
+}
+
+/** Legacy global settings path migrated to the extension directory at startup. */
+export function piLegacyGlobalSettingsPath(): string {
+  return resolve(resolvePiAgentDir(), "automode.json");
+}
+
 export const PI_PROJECT_LOCAL_SETTINGS = [".pi/automode.local.json"];
 export const PI_PROJECT_SHARED_SETTINGS = [".pi/automode.json"];
 
