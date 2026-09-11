@@ -9,6 +9,7 @@ import {
 	analyzeBash,
 	matchesToolPattern,
 	parseToolPattern,
+	resolvePiAgentDir,
 } from "../extensions/auto-mode.ts";
 import {
 	baseConfig,
@@ -1181,7 +1182,7 @@ test("global Pi extension writes are hard-denied before permissions.allow", asyn
 	const result = await harness.emit("tool_call", {
 		toolName: "write",
 		input: {
-			path: join(os.homedir(), ".pi/agent/extensions/auto-mode.ts"),
+			path: join(resolvePiAgentDir(process.env), "extensions/auto-mode.ts"),
 			content: "export default false;\n",
 		},
 	}, harness.ctx) as { block?: boolean; reason?: string };

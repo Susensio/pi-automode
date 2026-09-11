@@ -22,13 +22,14 @@ import {
 	DEFAULT_HARD_DENY,
 	DEFAULT_MAX_USER_TRANSCRIPT_TOKENS,
 	DEFAULT_SOFT_DENY,
-	PI_GLOBAL_SETTINGS,
-	PI_LEGACY_GLOBAL_SETTINGS,
 	buildEffectiveConfigFromSources,
 	createPiAutomode,
 	loadEffectiveConfigWithDiagnostics,
 	modelVisibleConfigDiagnostics,
+	piGlobalSettingsPaths,
+	piLegacyGlobalSettingsPath,
 	prepareGlobalConfig,
+	resolvePiAgentDir,
 	validateSettingsFile,
 	writeGlobalClassifierModel,
 } from "../extensions/auto-mode.ts";
@@ -57,12 +58,16 @@ test("automode exposes one read-only inspection tool", () => {
 	assert.deepEqual([...fake.commands.keys()], ["automode", "auto-mode"]);
 });
 
-test("global config path uses the extension data directory", () => {
-	assert.match(
-		PI_GLOBAL_SETTINGS[0] ?? "",
-		/\.pi\/agent\/extensions\/pi-automode\/config\.json$/,
+test("global config paths resolve under the effective Pi agent directory", () => {
+	const agentDir = resolvePiAgentDir(process.env);
+	assert.equal(
+		piGlobalSettingsPaths()[0],
+		join(agentDir, "extensions/pi-automode/config.json"),
 	);
-	assert.match(PI_LEGACY_GLOBAL_SETTINGS, /\.pi\/agent\/automode\.json$/);
+	assert.equal(
+		piLegacyGlobalSettingsPath(),
+		join(agentDir, "automode.json"),
+	);
 });
 
 test("importing the extension does not migrate global config", () => {
@@ -87,7 +92,12 @@ test("importing the extension does not migrate global config", () => {
 			],
 			{
 				cwd: process.cwd(),
-				env: { ...process.env, HOME: home, USERPROFILE: home },
+				env: {
+					...process.env,
+					HOME: home,
+					USERPROFILE: home,
+					PI_CODING_AGENT_DIR: join(home, ".pi/agent"),
+				},
 				encoding: "utf8",
 			},
 		);

@@ -15,7 +15,7 @@ import {
   resolve,
 } from "node:path";
 import { fileURLToPath } from "node:url";
-import { HOME, PATH_BEARING_TOOLS, PROFILE_FILES } from "./constants.ts";
+import { HOME, PATH_BEARING_TOOLS, PROFILE_FILES, resolvePiAgentDir } from "./constants.ts";
 
 const UNICODE_SPACES = /[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g;
 
@@ -236,9 +236,7 @@ export function isSafetyControlPath(path: string, cwd: string): boolean {
   const policyCwd = resolvePathForPolicy(cwd) ?? resolve(cwd);
   const normalized = normalizeProtectedPathForMatch(policyPath);
   const file = basename(normalized);
-  const piAgentRoot = normalizeProtectedPathForMatch(
-    resolve(HOME, ".pi/agent"),
-  );
+  const piAgentRoot = normalizeProtectedPathForMatch(resolvePiAgentDir());
   const globalExtensions = `${piAgentRoot}/extensions`;
   const globalSettings = `${piAgentRoot}/settings`;
   if (
