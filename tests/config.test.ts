@@ -15,6 +15,7 @@ import os from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
+import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import {
 	DEFAULT_ALLOW,
 	DEFAULT_ALLOW_INSIDE_WORKING_DIRECTORY,
@@ -29,7 +30,6 @@ import {
 	piGlobalSettingsPaths,
 	piLegacyGlobalSettingsPath,
 	prepareGlobalConfig,
-	resolvePiAgentDir,
 	validateSettingsFile,
 	writeGlobalClassifierModel,
 } from "../extensions/auto-mode.ts";
@@ -59,7 +59,7 @@ test("automode exposes one read-only inspection tool", () => {
 });
 
 test("global config paths resolve under the effective Pi agent directory", () => {
-	const agentDir = resolvePiAgentDir(process.env);
+	const agentDir = getAgentDir();
 	assert.equal(
 		piGlobalSettingsPaths()[0],
 		join(agentDir, "extensions/pi-automode/config.json"),

@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { appendFileSync, mkdirSync } from "node:fs";
 import { basename, dirname, extname, isAbsolute, join, resolve } from "node:path";
-import { resolvePiAgentDir } from "./constants.ts";
+import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import type {
   ClassifierIo,
   ClassifierIoAttempt,
@@ -76,7 +76,7 @@ export type LoggerOptions = {
 };
 
 export function defaultAutomodeLogRoot(): string {
-  return join(resolvePiAgentDir(), "extensions/pi-automode/logs");
+  return join(getAgentDir(), "extensions/pi-automode/logs");
 }
 
 const VALID_SESSION_ID =

@@ -4,12 +4,12 @@ import { join, resolve } from "node:path";
 import test from "node:test";
 import { pathToFileURL } from "node:url";
 import assert from "node:assert/strict";
+import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import {
 	MAX_WILDCARD_INPUT_LENGTH,
 	analyzeBash,
 	matchesToolPattern,
 	parseToolPattern,
-	resolvePiAgentDir,
 } from "../extensions/auto-mode.ts";
 import {
 	baseConfig,
@@ -1034,7 +1034,7 @@ test("global Pi extension writes are hard-denied before permissions.allow", asyn
 	const result = await harness.emit("tool_call", {
 		toolName: "write",
 		input: {
-			path: join(resolvePiAgentDir(process.env), "extensions/auto-mode.ts"),
+			path: join(getAgentDir(), "extensions/auto-mode.ts"),
 			content: "export default false;\n",
 		},
 	}, harness.ctx) as { block?: boolean; reason?: string };

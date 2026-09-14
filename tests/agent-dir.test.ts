@@ -3,11 +3,11 @@ import { join, resolve } from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+	CONFIG_DIR_NAME,
 	deterministicHardDeny,
 	piGlobalSettingsPaths,
 	piLegacyGlobalSettingsPath,
 	resolveLogPath,
-	resolvePiAgentDir,
 } from "../extensions/auto-mode.ts";
 
 const PREVIOUS_AGENT_DIR = process.env.PI_CODING_AGENT_DIR;
@@ -26,32 +26,9 @@ function withAgentDir(dir: string | undefined, fn: () => void): void {
 	}
 }
 
-test("resolvePiAgentDir defaults to ~/.pi/agent and expands ~", () => {
-	assert.equal(
-		resolvePiAgentDir({}),
-		resolve(os.homedir(), ".pi/agent"),
-	);
-	assert.equal(
-		resolvePiAgentDir({ PI_CODING_AGENT_DIR: "~/pi-agent" }),
-		resolve(os.homedir(), "pi-agent"),
-	);
-	assert.equal(
-		resolvePiAgentDir({ PI_CODING_AGENT_DIR: "~" }),
-		os.homedir(),
-	);
-	assert.equal(
-		resolvePiAgentDir({ PI_CODING_AGENT_DIR: "/opt/pi/agent" }),
-		"/opt/pi/agent",
-	);
-});
-
 test("global settings paths follow PI_CODING_AGENT_DIR", () => {
 	const customDir = join(os.tmpdir(), "pi-agent-custom-config");
 	withAgentDir(customDir, () => {
-		assert.equal(
-			resolvePiAgentDir(),
-			customDir,
-		);
 		assert.equal(
 			piGlobalSettingsPaths()[0],
 			join(customDir, "extensions/pi-automode/config.json"),
@@ -64,14 +41,17 @@ test("global settings paths follow PI_CODING_AGENT_DIR", () => {
 	withAgentDir(undefined, () => {
 		assert.equal(
 			piGlobalSettingsPaths()[0],
-			join(resolve(os.homedir(), ".pi/agent"), "extensions/pi-automode/config.json"),
+			join(
+				resolve(os.homedir(), CONFIG_DIR_NAME, "agent"),
+				"extensions/pi-automode/config.json",
+			),
 		);
 	});
 });
 
 test("deterministic hard deny follows the effective agent directory", () => {
 	const customDir = join(os.tmpdir(), "pi-agent-custom-guard");
-	const defaultDir = join(os.homedir(), ".pi/agent");
+	const defaultDir = resolve(os.homedir(), CONFIG_DIR_NAME, "agent");
 	withAgentDir(customDir, () => {
 		const customSettings = join(customDir, "settings.json");
 		const customExtension = join(customDir, "extensions/example.ts");
