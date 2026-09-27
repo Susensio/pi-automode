@@ -25,6 +25,8 @@ import {
   DEFAULT_SOFT_DENY,
   MAX_CLASSIFIER_TIMEOUT_MS,
   MAX_STATUS_FORMAT_LENGTH,
+  MAX_TRUSTED_TOOL_RESULTS,
+  MAX_TRUSTED_TOOL_ENTRY_LENGTH,
   PI_PROJECT_LOCAL_SETTINGS,
   PI_PROJECT_SHARED_SETTINGS,
   piGlobalSettingsPaths,
@@ -290,6 +292,7 @@ export function validateSettingsFile(
         "allowInsideWorkingDirectory",
         "statusFormat",
         "deniedPaths",
+        "trustedToolResults",
         "maxUserTranscriptTokens",
         "maxToolTranscriptTokens",
         "environment",
@@ -373,6 +376,11 @@ export function validateSettingsFile(
       }
       validateDeniedPathsSetting(
         autoMode.deniedPaths,
+        source,
+        diagnostics,
+      );
+      validateTrustedToolResultsSetting(
+        autoMode.trustedToolResults,
         source,
         diagnostics,
       );
@@ -588,6 +596,60 @@ function validateDeniedPathsSetting(
 const DENIED_PATH_PATTERN_PREFIX =
   /^(?:\/|~(?:\/|$)|\$HOME(?:\/|$)|\$\{HOME\}(?:\/|$)|\*)/;
 
+/**
+ * A trustedToolResults entry is a tool name, optionally pinned to a source
+ * path glob with `@`: `ask_user_question` trusts the name only when the
+ * registered tool is built in; `name@glob` trusts any registered tool whose
+ * canonical source path matches the glob. The name part must be non-empty
+ * and the glob part must be non-empty when the separator is present.
+ */
+function validateTrustedToolResultsSetting(
+  value: unknown,
+  source: string,
+  diagnostics: string[],
+): void {
+  if (value === undefined) return;
+  if (!Array.isArray(value)) {
+    diagnostics.push(
+      `${source}: trustedToolResults must be an array of strings`,
+    );
+    return;
+  }
+  for (const [index, entry] of value.entries()) {
+    if (entry === "$defaults") continue;
+    const invalid = (reason: string): void => {
+      diagnostics.push(
+        `${source}: trustedToolResults[${index}] ${reason}`,
+      );
+    };
+    if (typeof entry !== "string" || entry.trim() === "") {
+      invalid("must be a non-empty tool name or name@glob");
+      continue;
+    }
+    if (entry.length > MAX_TRUSTED_TOOL_ENTRY_LENGTH) {
+      invalid(
+        `must be at most ${MAX_TRUSTED_TOOL_ENTRY_LENGTH} characters`,
+      );
+      continue;
+    }
+    const separator = entry.indexOf("@");
+    if (separator === 0) {
+      invalid("must be a non-empty tool name or name@glob");
+      continue;
+    }
+    if (separator > 0 && separator === entry.length - 1) {
+      invalid("must be a non-empty tool name or name@glob");
+      continue;
+    }
+  }
+  const plain = value.filter((entry) => typeof entry === "string").length;
+  if (plain > MAX_TRUSTED_TOOL_RESULTS) {
+    diagnostics.push(
+      `${source}: trustedToolResults must contain at most ${MAX_TRUSTED_TOOL_RESULTS} entries`,
+    );
+  }
+}
+
 const CLASSIFIER_REASONING_LEVELS = new Set<ClassifierReasoningLevel>([
   "low",
   "medium",
@@ -708,6 +770,7 @@ export function buildEffectiveConfigFromSources(
     allowInsideWorkingDirectory: DEFAULT_ALLOW_INSIDE_WORKING_DIRECTORY,
     statusFormat: DEFAULT_STATUS_FORMAT,
     deniedPaths: [...DEFAULT_DENIED_PATHS],
+    trustedToolResults: [],
     fastClassifierMaxTokens: DEFAULT_FAST_CLASSIFIER_MAX_TOKENS,
     classifierTimeoutMs: DEFAULT_CLASSIFIER_TIMEOUT_MS,
     maxUserTranscriptTokens: DEFAULT_MAX_USER_TRANSCRIPT_TOKENS,
@@ -737,6 +800,7 @@ export function buildEffectiveConfigFromSources(
   const allow = createRuleAccumulator(DEFAULT_ALLOW);
   const protectedPaths = createRuleAccumulator(DEFAULT_PROTECTED_PATHS);
   const deniedPaths = createRuleAccumulator(DEFAULT_DENIED_PATHS);
+  const trustedToolResults = createRuleAccumulator([]);
   const softDeny = createRuleAccumulator(DEFAULT_SOFT_DENY);
   const hardDeny = createRuleAccumulator(DEFAULT_HARD_DENY);
 
@@ -749,6 +813,11 @@ export function buildEffectiveConfigFromSources(
       deniedPaths,
       settings.autoMode?.deniedPaths,
       (entry) => entry.length <= MAX_WILDCARD_PATTERN_LENGTH,
+    );
+    applyRuleSetting(
+      trustedToolResults,
+      settings.autoMode?.trustedToolResults,
+      (entry) => entry.length <= MAX_TRUSTED_TOOL_ENTRY_LENGTH,
     );
     applyRuleSetting(
       softDeny,
@@ -766,6 +835,7 @@ export function buildEffectiveConfigFromSources(
     allow: finalizeRuleSetting(allow),
     protectedPaths: finalizeRuleSetting(protectedPaths),
     deniedPaths: finalizeRuleSetting(deniedPaths),
+    trustedToolResults: finalizeRuleSetting(trustedToolResults),
     softDeny: finalizeRuleSetting(softDeny),
     hardDeny: finalizeRuleSetting(hardDeny),
   };

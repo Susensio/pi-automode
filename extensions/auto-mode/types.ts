@@ -52,6 +52,8 @@ export type AutoModeSettings = {
   statusFormat?: string;
   /** Path glob patterns (file tools) that are always denied before the classifier. Supports `~` and `*` (matches any characters, including `/`). */
   deniedPaths?: unknown;
+  /** Tools whose results may be included in classifier evidence. Entries are `name` (built-in tools only) or `name@glob` (pinned to a source path glob). */
+  trustedToolResults?: unknown;
   maxUserTranscriptTokens?: number;
   maxToolTranscriptTokens?: number;
   environment?: unknown;
@@ -99,6 +101,7 @@ export type EffectiveConfig = {
   allowInsideWorkingDirectory: boolean;
   statusFormat: string;
   deniedPaths: string[];
+  trustedToolResults: string[];
   maxUserTranscriptTokens: number;
   maxToolTranscriptTokens: number;
   environment: string[];
@@ -209,4 +212,6 @@ export type ClassifyAction = (
   config: EffectiveConfig,
   action: string,
   loadedContext: string,
+  /** Registered tool names whose results may enter the classifier transcript. */
+  trustedToolResults?: ReadonlySet<string>,
 ) => Promise<ClassifyResult>;
