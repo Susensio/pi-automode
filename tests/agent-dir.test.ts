@@ -1,5 +1,6 @@
 import os from "node:os";
 import { join, resolve } from "node:path";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -83,6 +84,79 @@ test("deterministic hard deny follows the effective agent directory", () => {
 			/safety-control/,
 		);
 	});
+});
+
+test("deterministic hard deny canonicalizes a symlinked agent directory", () => {
+	const realDir = mkdtempSync(join(os.tmpdir(), "pi-agent-real-"));
+	const linkDir = join(os.tmpdir(), "pi-agent-link-canonical");
+	rmSync(linkDir, { force: true });
+	symlinkSync(realDir, linkDir);
+	try {
+		withAgentDir(linkDir, () => {
+			// The target spelled through the canonical path is still guarded.
+			assert.match(
+				deterministicHardDeny(
+					"edit",
+					{ path: join(realDir, "settings.json") },
+					"/tmp/project",
+				) ?? "",
+				/safety-control/,
+			);
+			// The target spelled through the symlink is guarded too.
+			assert.match(
+				deterministicHardDeny(
+					"edit",
+					{ path: join(linkDir, "settings.json") },
+					"/tmp/project",
+				) ?? "",
+				/safety-control/,
+			);
+		});
+	} finally {
+		rmSync(linkDir, { force: true });
+		rmSync(realDir, { recursive: true, force: true });
+	}
+});
+
+test("deterministic hard deny tolerates a trailing separator in the agent directory", () => {
+	const realDir = mkdtempSync(join(os.tmpdir(), "pi-agent-trailing-"));
+	try {
+		withAgentDir(`${realDir}/`, () => {
+			assert.match(
+				deterministicHardDeny(
+					"edit",
+					{ path: join(realDir, "settings.json") },
+					"/tmp/project",
+				) ?? "",
+				/safety-control/,
+			);
+		});
+	} finally {
+		rmSync(realDir, { recursive: true, force: true });
+	}
+});
+
+test("deterministic hard deny resolves a relative agent directory", () => {
+	const baseDir = mkdtempSync(join(os.tmpdir(), "pi-agent-relative-"));
+	const relativeDir = "rel-agent-dir";
+	mkdirSync(join(baseDir, relativeDir), { recursive: true });
+	const previousCwd = process.cwd();
+	try {
+		process.chdir(baseDir);
+		withAgentDir(relativeDir, () => {
+			assert.match(
+				deterministicHardDeny(
+					"edit",
+					{ path: join(baseDir, relativeDir, "settings.json") },
+					"/tmp/project",
+				) ?? "",
+				/safety-control/,
+			);
+		});
+	} finally {
+		process.chdir(previousCwd);
+		rmSync(baseDir, { recursive: true, force: true });
+	}
 });
 
 test("in-memory log root follows PI_CODING_AGENT_DIR", () => {

@@ -237,7 +237,10 @@ export function isSafetyControlPath(path: string, cwd: string): boolean {
   const policyCwd = resolvePathForPolicy(cwd) ?? resolve(cwd);
   const normalized = normalizeProtectedPathForMatch(policyPath);
   const file = basename(normalized);
-  const piAgentRoot = normalizeProtectedPathForMatch(getAgentDir());
+  const agentDir = resolve(getAgentDir());
+  const piAgentRoot = normalizeProtectedPathForMatch(
+    resolvePathForPolicy(agentDir) ?? agentDir,
+  );
   const globalExtensions = `${piAgentRoot}/extensions`;
   const globalSettings = `${piAgentRoot}/settings`;
   if (
